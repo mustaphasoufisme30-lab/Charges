@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  code, pre {
+    font-family: var(--font-mono);
+  }
+}
+
+@keyframes alarm-halo {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.015);
+  }
+}
+
+.animate-alarm-halo {
+  animation: alarm-halo 0.9s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-alarm-halo {
+    animation: none;
+  }
+}
+
+/* Custom accessible range sliders */
+input[type="range"].cg-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"].cg-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #E2E8F0;
+}
+
+input[type="range"].cg-slider-dark::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #273240;
+}
+
+input[type="range"].cg-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #059669;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
+  margin-top: -7px;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+input[type="range"].cg-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.08);
+}
+
+input[type="range"].cg-slider:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+input[type="range"].cg-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #E2E8F0;
+}
+
+input[type="range"].cg-slider-dark::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: #273240;
+}
+
+input[type="range"].cg-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: #059669;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.25);
+}

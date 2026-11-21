@@ -1,0 +1,8 @@
+{
+  "name": "ChargeGuard 100%",
+  "description": "Code complet Kotlin & Jetpack Compose et simulateur interactif de l'application Android ChargeGuard 100% avec ForegroundService et alarme sonore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
