@@ -1,7 +1,6 @@
 {
-  "name": "ChargeGuard - Alarme Batterie",
+  "name": "ChargeGuard",
   "short_name": "ChargeGuard",
-  "description": "Surveillance de charge en temps réel avec alarme 100% et mode économie OLED.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#050a1a",
@@ -9,9 +8,9 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
