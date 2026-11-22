@@ -2,27 +2,55 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ChargeGuard - Vraie Batterie</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#050a1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>ChargeGuard</title>
+
+<!-- Lien vers le Manifest PWA et l'icône -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+
 <style>
-  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
-  body{background:#050a1a;color:white;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+  *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+  body{background:#050a1a;color:white;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;transition:background 0.4s;overflow:hidden}
+  #mainWrap{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;transition:transform 1.5s ease-in-out}
   h1{font-size:22px;color:#00e5ff;margin-bottom:5px}
   p.sub{color:#8892a8;font-size:13px;margin-bottom:25px}
   .circle{width:260px;height:260px;border-radius:50%;background:conic-gradient(#00e5ff 0%, #1a2340 0%);display:flex;align-items:center;justify-content:center;position:relative;transition:0.5s}
-  .inner{width:215px;height:215px;background:#050a1a;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .inner{width:215px;height:215px;background:#050a1a;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background 0.4s}
   #pct{font-size:64px;font-weight:900}
   #status{font-size:16px;margin-top:5px;color:#00e5ff}
-  #info{margin-top:20px;background:#101a35;padding:15px 20px;border-radius:15px;width:100%;max-width:320px}
+  #info{margin-top:20px;background:#101a35;padding:15px 20px;border-radius:15px;width:100%;max-width:320px;transition:0.4s}
   #info div{margin:8px 0;font-size:15px}
   #alertBox{display:none;position:fixed;inset:0;background:#ff0000;z-index:99;flex-direction:column;align-items:center;justify-content:center;padding:20px}
   #alertBox h2{font-size:34px;line-height:1.2}
-  #stopBtn{margin-top:30px;background:white;color:red;border:none;padding:18px 30px;font-size:20px;font-weight:900;border-radius:50px}
-  #testBtn{margin-top:15px;background:#00e5ff;color:black;border:none;padding:12px 20px;border-radius:10px;font-weight:bold}
+  #stopBtn{margin-top:30px;background:white;color:red;border:none;padding:18px 30px;font-size:20px;font-weight:900;border-radius:50px;cursor:pointer}
+  .btn{margin-top:12px;background:#00e5ff;color:black;border:none;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%;max-width:320px;font-size:15px;transition:0.3s}
+  .btn.active{background:#00c853;color:white}
+  #installBtn{display:none;background:#ffab00;color:black}
   .small{margin-top:15px;color:#8892a8;font-size:12px}
+
+  /* MODE ÉCONOMIE D'ÉCRAN (OLED NOIR PUR) */
+  body.eco-mode{background:#000000}
+  body.eco-mode .inner{background:#000000}
+  body.eco-mode h1, 
+  body.eco-mode p.sub, 
+  body.eco-mode #info, 
+  body.eco-mode .small,
+  body.eco-mode #testBtn,
+  body.eco-mode #installBtn{opacity:0.15}
+  body.eco-mode .circle{opacity:0.45}
+  body.eco-mode #armBtn{opacity:0.35}
+  body.eco-mode #ecoBtn{background:#111111;color:#666666;border:1px solid #222222}
 </style>
 </head>
 <body>
+
+<div id="mainWrap">
   <h1>⚡ ChargeGuard</h1>
   <p class="sub">Synchronisation réelle avec ta batterie</p>
 
@@ -39,82 +67,173 @@
     <div>⏱️ Temps : <b id="timeTxt">--</b></div>
   </div>
 
-  <button id="testBtn" onclick="testSon()">🔔 Tester le son d'alerte</button>
-  <p class="small">Ouvre ce fichier dans Chrome sur Android.<br>Si le % = celui en haut de ton écran, c'est que ça marche.</p>
+  <button id="installBtn" class="btn" onclick="installerApp()">📲 Installer l'application sur l'écran</button>
+  <button id="armBtn" class="btn" onclick="activerSurveillance()">🛡️ Activer l'alarme (Son + Écran actif)</button>
+  <button id="ecoBtn" class="btn" style="background:#101a35;color:#8892a8" onclick="toggleEco()">🌑 Mode économie d'écran : OFF</button>
+  <button id="testBtn" class="btn" style="background:#1a2340;color:#00e5ff" onclick="testSon()">🔔 Tester le son d'alerte</button>
 
-  <div id="alertBox">
-    <h2>🔋 BATTERIE PLEINE<br>100%<br><br>DÉBRANCHE TON CHARGEUR !</h2>
-    <button id="stopBtn" onclick="stopAlerte()">ARRÊTER L'ALERTE</button>
-  </div>
+  <p class="small">Active l'alarme puis le mode économie d'écran.<br>L'interface bouge légèrement chaque minute pour protéger l'écran.</p>
+</div>
+
+<div id="alertBox">
+  <h2>🔋 BATTERIE PLEINE<br>100%<br><br>DÉBRANCHE TON CHARGEUR !</h2>
+  <button id="stopBtn" onclick="stopAlerte()">ARRÊTER L'ALERTE</button>
+</div>
 
 <script>
-let audioCtx, intervalSon, enAlerte = false;
+let audioCtx, intervalSon, intervalShift, wakeLock = null, enAlerte = false, ecoMode = false, deferredPrompt;
 
-function beep(){
-  try{
-    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+// Enregistrement du Service Worker (Mode Hors-Ligne PWA)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW:', err));
+  });
+}
+
+// Bouton d'installation natif Android
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'block';
+});
+
+async function installerApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    document.getElementById('installBtn').style.display = 'none';
+  }
+  deferredPrompt = null;
+}
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+async function activerSurveillance() {
+  initAudio();
+  const btn = document.getElementById('armBtn');
+  btn.innerText = "✅ Surveillance active";
+  btn.classList.add('active');
+
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch (err) {}
+}
+
+function deplacerEcran() {
+  const wrap = document.getElementById('mainWrap');
+  const x = Math.floor(Math.random() * 29) - 14;
+  const y = Math.floor(Math.random() * 29) - 14;
+  wrap.style.transform = `translate(${x}px, ${y}px)`;
+}
+
+function toggleEco() {
+  ecoMode = !ecoMode;
+  document.body.classList.toggle('eco-mode', ecoMode);
+  const btn = document.getElementById('ecoBtn');
+  const wrap = document.getElementById('mainWrap');
+
+  if (ecoMode) {
+    btn.innerText = "☀️ Quitter le mode économie";
+    deplacerEcran();
+    intervalShift = setInterval(deplacerEcran, 60000);
+  } else {
+    btn.innerText = "🌑 Mode économie d'écran : OFF";
+    clearInterval(intervalShift);
+    wrap.style.transform = 'translate(0px, 0px)';
+  }
+}
+
+function beep() {
+  try {
+    initAudio();
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.frequency.value = 880; o.type='square';
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.frequency.value = 880;
+    o.type = 'square';
     g.gain.value = 0.3;
-    o.start(); o.stop(audioCtx.currentTime + 0.5);
-    if(navigator.vibrate) navigator.vibrate(500);
-  }catch(e){}
+    o.start();
+    o.stop(audioCtx.currentTime + 0.5);
+    if (navigator.vibrate) navigator.vibrate();
+  } catch (e) {}
 }
 
-function lancerAlerte(){
-  if(enAlerte) return;
+function lancerAlerte() {
+  if (enAlerte) return;
   enAlerte = true;
-  document.getElementById('alertBox').style.display='flex';
+  if (ecoMode) toggleEco();
+  document.getElementById('alertBox').style.display = 'flex';
   beep();
-  intervalSon = setInterval(beep, 1000);
+  intervalSon = setInterval(beep, 1200);
 }
 
-function stopAlerte(){
+function stopAlerte() {
   enAlerte = false;
   clearInterval(intervalSon);
-  document.getElementById('alertBox').style.display='none';
-  if(navigator.vibrate) navigator.vibrate(0);
+  document.getElementById('alertBox').style.display = 'none';
+  if (navigator.vibrate) navigator.vibrate(0);
 }
 
-function testSon(){ beep(); alert("Si tu as entendu le beep, le son marche !"); }
+function testSon() {
+  initAudio();
+  beep();
+}
 
-async function init(){
-  try{
+async function init() {
+  if (!('getBattery' in navigator)) {
+    document.getElementById('status').innerText = 'Non supporté (ex: iOS/Firefox)';
+    document.getElementById('pct').innerText = 'N/A';
+    return;
+  }
+
+  try {
     const battery = await navigator.getBattery();
-    function update(){
+    function update() {
       const pct = Math.round(battery.level * 100);
       document.getElementById('pct').innerText = pct + '%';
       document.getElementById('levelTxt').innerText = pct + '%';
       document.getElementById('chargeTxt').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge';
       document.getElementById('status').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge';
       document.getElementById('circle').style.background = `conic-gradient(#00e5ff ${pct}%, #1a2340 ${pct}%)`;
-      if(battery.charging && battery.chargingTime !== Infinity){
-        document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime/60)+' min restantes';
-      } else if(!battery.charging && battery.dischargingTime !== Infinity){
-        document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime/60)+' min restantes';
+
+      if (battery.charging && battery.chargingTime !== Infinity) {
+        document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime / 60) + ' min restantes';
+      } else if (!battery.charging && battery.dischargingTime !== Infinity) {
+        document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime / 60) + ' min restantes';
       } else {
         document.getElementById('timeTxt').innerText = '--';
       }
-      // ALERTE 100%
-      if(pct >= 100 && battery.charging){
+
+      if (pct >= 100 && battery.charging) {
         lancerAlerte();
       }
-      // Si on débranche, on coupe l'alerte
-      if(!battery.charging && enAlerte){
+      if (!battery.charging && enAlerte) {
         stopAlerte();
       }
     }
+
     update();
     battery.addEventListener('levelchange', update);
     battery.addEventListener('chargingchange', update);
-  }catch(e){
-    document.getElementById('status').innerText = 'Non autorisé par le navigateur';
+  } catch (e) {
+    document.getElementById('status').innerText = 'Erreur d’accès batterie';
     document.getElementById('pct').innerText = 'Erreur';
   }
 }
+
 init();
 </script>
 </body>
-</html>
+   </html>
+   
