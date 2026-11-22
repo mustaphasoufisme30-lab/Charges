@@ -28,7 +28,7 @@ jobs:
 
       - name: Init TWA Project
         run: |
-          bubblewrap init --manifest=https://charge-ige9.vercel.app/manifest.json --directory=./twa-app
+          bubblewrap init --manifest=https://charges-ige9.vercel.app/manifest.json --directory=./twa-app
 
       - name: Build APK
         run: |
