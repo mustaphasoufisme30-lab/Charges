@@ -44,7 +44,7 @@
 
 <div id="mainWrap">
   <h1>⚡ ChargeGuard</h1>
-  <p class="sub">Synchronisation réelle - Hors-ligne - Alerte à 80%</p>
+  <p class="sub">Hors-ligne - Alerte à 80% - Anti-veille</p>
   <div class="circle" id="circle">
     <div class="inner">
       <div id="pct">--%</div>
@@ -56,12 +56,13 @@
     <div>🔌 Charge : <b id="chargeTxt">--</b></div>
     <div>⏱️ Temps : <b id="timeTxt">--</b></div>
     <div>🎯 Alerte : <b style="color:#ff8800">80%</b></div>
+    <div>👁️ Écran : <b id="wakeTxt" style="color:#ff5252">Non maintenu</b></div>
   </div>
   <button id="armBtn" class="btn" onclick="activerSurveillance()">🛡️ Activer l'alarme (Son + Écran actif)</button>
   <button id="ecoBtn" class="btn" style="background:#101a35;color:#8892a8" onclick="toggleEco()">🌑 Mode économie d'écran : OFF</button>
   <button id="testBtn" class="btn" style="background:#1a2340;color:#00e5ff" onclick="testSon()">🔔 Tester le son d'alerte</button>
   <button id="installBtn" class="btn" onclick="installerApp()">📲 Installer l'application</button>
-  <p class="small">Active l'alarme puis le mode économie d'écran.<br>L'interface bouge légèrement chaque minute pour protéger l'écran.<br>Fonctionne sans WiFi une fois installé.</p>
+  <p class="small">1. Active l'alarme<br>2. Active le mode économie (écran noir mais allumé)<br>3. Ne verrouille PAS avec le bouton, laisse-le posé.<br>Fonctionne sans WiFi une fois installé.</p>
 </div>
 
 <div id="alertBox">
@@ -71,9 +72,10 @@
 
 <script>
 let audioCtx, intervalSon, intervalShift, wakeLock = null, enAlerte = false, ecoMode = false, deferredPrompt;
+let surveillanceActive = false;
 const SEUIL_ALERTE = 80;
 
-// --- HORS-LIGNE : Indicateur ---
+// --- HORS-LIGNE ---
 function updateNet(){
   document.getElementById('netStatus').innerText = navigator.onLine ? '📶 En ligne' : '📴 Hors-ligne - Ça marche !';
 }
@@ -81,7 +83,6 @@ window.addEventListener('online', updateNet);
 window.addEventListener('offline', updateNet);
 updateNet();
 
-// Enregistrement du Service Worker (Mode Hors-Ligne PWA)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW:', err));
@@ -99,17 +100,59 @@ async function installerApp() {
   if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none';
   deferredPrompt = null;
 }
+
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
+
+// --- ✅ CORRECTION MISE EN VEILLE : WakeLock qui se réactive tout seul ---
+async function demanderWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      document.getElementById('wakeTxt').innerText = 'Maintenu ✅';
+      document.getElementById('wakeTxt').style.color = '#00e5ff';
+      // Si Android le coupe, on le redemande
+      wakeLock.addEventListener('release', () => {
+        document.getElementById('wakeTxt').innerText = 'Coupé, réactivation...';
+        document.getElementById('wakeTxt').style.color = '#ff5252';
+        if (surveillanceActive && document.visibilityState === 'visible') {
+          setTimeout(demanderWakeLock, 1000);
+        }
+      });
+    }
+  } catch (err) {
+    console.log("WakeLock erreur", err);
+    document.getElementById('wakeTxt').innerText = 'Non supporté';
+  }
+}
+
+// Quand tu reviens sur l'app, on réactive l'écran
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && surveillanceActive) {
+    demanderWakeLock();
+  }
+});
+
+// Vérification toutes les 10 secondes : si le WakeLock est mort, on le relance
+setInterval(() => {
+  if (surveillanceActive && (!wakeLock || wakeLock.released)) {
+    demanderWakeLock();
+  }
+}, 10000);
+
 async function activerSurveillance() {
   initAudio();
+  surveillanceActive = true;
   const btn = document.getElementById('armBtn');
-  btn.innerText = "✅ Surveillance active";
+  btn.innerText = "✅ Surveillance active - Ne verrouille pas l'écran";
   btn.classList.add('active');
-  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+  await demanderWakeLock();
+  // Petit test pour être sûr que le son est débloqué
+  beep();
 }
+
 function deplacerEcran() {
   const wrap = document.getElementById('mainWrap');
   const x = Math.floor(Math.random() * 29) - 14;
@@ -149,6 +192,8 @@ function lancerAlerte() {
   document.getElementById('alertBox').style.display = 'flex';
   beep();
   intervalSon = setInterval(beep, 1200);
+  // Vibration forte pour réveiller même si son coupé
+  if (navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
 }
 function stopAlerte() {
   enAlerte = false;
@@ -157,6 +202,7 @@ function stopAlerte() {
   if (navigator.vibrate) navigator.vibrate(0);
 }
 function testSon() { initAudio(); beep(); }
+
 async function init() {
   if (!('getBattery' in navigator)) {
     document.getElementById('status').innerText = 'Non supporté (ex: iOS/Firefox)';
@@ -175,7 +221,7 @@ async function init() {
       if (battery.charging && battery.chargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime / 60) + ' min restantes';
       else if (!battery.charging && battery.dischargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime / 60) + ' min restantes';
       else document.getElementById('timeTxt').innerText = '--';
-      // ✅ CORRIGÉ : ALERTE À 80% AU LIEU DE 100%
+      // ✅ ALERTE À 80%
       if (pct >= SEUIL_ALERTE && battery.charging) lancerAlerte();
       if (!battery.charging && enAlerte) stopAlerte();
     }
