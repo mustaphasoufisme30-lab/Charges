@@ -8,16 +8,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ChargeGuard</title>
-
-<!-- Lien vers le Manifest PWA et l'icône -->
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon.svg">
-
 <style>
   *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;-webkit-tap-highlight-color:transparent}
   body{background:#050a1a;color:white;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;transition:background 0.4s;overflow:hidden}
   #mainWrap{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;transition:transform 1.5s ease-in-out}
+  .netStatus{position:fixed;top:10px;right:10px;background:#222;padding:6px 12px;border-radius:20px;font-size:12px;z-index:10}
   h1{font-size:22px;color:#00e5ff;margin-bottom:5px}
   p.sub{color:#8892a8;font-size:13px;margin-bottom:25px}
   .circle{width:260px;height:260px;border-radius:50%;background:conic-gradient(#00e5ff 0%, #1a2340 0%);display:flex;align-items:center;justify-content:center;position:relative;transition:0.5s}
@@ -26,62 +24,62 @@
   #status{font-size:16px;margin-top:5px;color:#00e5ff}
   #info{margin-top:20px;background:#101a35;padding:15px 20px;border-radius:15px;width:100%;max-width:320px;transition:0.4s}
   #info div{margin:8px 0;font-size:15px}
-  #alertBox{display:none;position:fixed;inset:0;background:#ff0000;z-index:99;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+  #alertBox{display:none;position:fixed;inset:0;background:#ff8800;z-index:99;flex-direction:column;align-items:center;justify-content:center;padding:20px}
   #alertBox h2{font-size:34px;line-height:1.2}
-  #stopBtn{margin-top:30px;background:white;color:red;border:none;padding:18px 30px;font-size:20px;font-weight:900;border-radius:50px;cursor:pointer}
+  #stopBtn{margin-top:30px;background:white;color:#ff5500;border:none;padding:18px 30px;font-size:20px;font-weight:900;border-radius:50px;cursor:pointer}
   .btn{margin-top:12px;background:#00e5ff;color:black;border:none;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%;max-width:320px;font-size:15px;transition:0.3s}
   .btn.active{background:#00c853;color:white}
   #installBtn{display:none;background:#ffab00;color:black}
   .small{margin-top:15px;color:#8892a8;font-size:12px}
-
-  /* MODE ÉCONOMIE D'ÉCRAN (OLED NOIR PUR) */
   body.eco-mode{background:#000000}
   body.eco-mode .inner{background:#000000}
-  body.eco-mode h1, 
-  body.eco-mode p.sub, 
-  body.eco-mode #info, 
-  body.eco-mode .small,
-  body.eco-mode #testBtn,
-  body.eco-mode #installBtn{opacity:0.15}
+  body.eco-mode h1, body.eco-mode p.sub, body.eco-mode #info, body.eco-mode .small, body.eco-mode #testBtn, body.eco-mode #installBtn{opacity:0.15}
   body.eco-mode .circle{opacity:0.45}
   body.eco-mode #armBtn{opacity:0.35}
   body.eco-mode #ecoBtn{background:#111111;color:#666666;border:1px solid #222222}
 </style>
 </head>
 <body>
+<div class="netStatus" id="netStatus">📶 En ligne</div>
 
 <div id="mainWrap">
   <h1>⚡ ChargeGuard</h1>
-  <p class="sub">Synchronisation réelle avec ta batterie</p>
-
+  <p class="sub">Synchronisation réelle - Hors-ligne - Alerte à 80%</p>
   <div class="circle" id="circle">
     <div class="inner">
       <div id="pct">--%</div>
       <div id="status">Connexion...</div>
     </div>
   </div>
-
   <div id="info">
     <div>🔋 Niveau : <b id="levelTxt">--</b></div>
     <div>🔌 Charge : <b id="chargeTxt">--</b></div>
     <div>⏱️ Temps : <b id="timeTxt">--</b></div>
+    <div>🎯 Alerte : <b style="color:#ff8800">80%</b></div>
   </div>
-
-  
   <button id="armBtn" class="btn" onclick="activerSurveillance()">🛡️ Activer l'alarme (Son + Écran actif)</button>
   <button id="ecoBtn" class="btn" style="background:#101a35;color:#8892a8" onclick="toggleEco()">🌑 Mode économie d'écran : OFF</button>
   <button id="testBtn" class="btn" style="background:#1a2340;color:#00e5ff" onclick="testSon()">🔔 Tester le son d'alerte</button>
-
-  <p class="small">Active l'alarme puis le mode économie d'écran.<br>L'interface bouge légèrement chaque minute pour protéger l'écran.</p>
+  <button id="installBtn" class="btn" onclick="installerApp()">📲 Installer l'application</button>
+  <p class="small">Active l'alarme puis le mode économie d'écran.<br>L'interface bouge légèrement chaque minute pour protéger l'écran.<br>Fonctionne sans WiFi une fois installé.</p>
 </div>
 
 <div id="alertBox">
-  <h2>🔋 BATTERIE PRESQUE PLEINE<br>80%<br><br>DÉBRANCHE TON CHARGEUR !</h2>
+  <h2>🔋 BATTERIE À 80%<br><br>DÉBRANCHE TON CHARGEUR !</h2>
   <button id="stopBtn" onclick="stopAlerte()">ARRÊTER L'ALERTE</button>
 </div>
 
 <script>
 let audioCtx, intervalSon, intervalShift, wakeLock = null, enAlerte = false, ecoMode = false, deferredPrompt;
+const SEUIL_ALERTE = 80;
+
+// --- HORS-LIGNE : Indicateur ---
+function updateNet(){
+  document.getElementById('netStatus').innerText = navigator.onLine ? '📶 En ligne' : '📴 Hors-ligne - Ça marche !';
+}
+window.addEventListener('online', updateNet);
+window.addEventListener('offline', updateNet);
+updateNet();
 
 // Enregistrement du Service Worker (Mode Hors-Ligne PWA)
 if ('serviceWorker' in navigator) {
@@ -89,59 +87,40 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW:', err));
   });
 }
-
-// Bouton d'installation natif Android
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
   document.getElementById('installBtn').style.display = 'block';
 });
-
 async function installerApp() {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') {
-    document.getElementById('installBtn').style.display = 'none';
-  }
+  if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none';
   deferredPrompt = null;
 }
-
 function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
-
 async function activerSurveillance() {
   initAudio();
   const btn = document.getElementById('armBtn');
   btn.innerText = "✅ Surveillance active";
   btn.classList.add('active');
-
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-    }
-  } catch (err) {}
+  try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
 }
-
 function deplacerEcran() {
   const wrap = document.getElementById('mainWrap');
   const x = Math.floor(Math.random() * 29) - 14;
   const y = Math.floor(Math.random() * 29) - 14;
   wrap.style.transform = `translate(${x}px, ${y}px)`;
 }
-
 function toggleEco() {
   ecoMode = !ecoMode;
   document.body.classList.toggle('eco-mode', ecoMode);
   const btn = document.getElementById('ecoBtn');
   const wrap = document.getElementById('mainWrap');
-
   if (ecoMode) {
     btn.innerText = "☀️ Quitter le mode économie";
     deplacerEcran();
@@ -152,23 +131,17 @@ function toggleEco() {
     wrap.style.transform = 'translate(0px, 0px)';
   }
 }
-
 function beep() {
   try {
     initAudio();
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    o.connect(g);
-    g.connect(audioCtx.destination);
-    o.frequency.value = 880;
-    o.type = 'square';
-    g.gain.value = 0.3;
-    o.start();
-    o.stop(audioCtx.currentTime + 0.5);
-    if (navigator.vibrate) navigator.vibrate();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.frequency.value = 880; o.type = 'square'; g.gain.value = 0.3;
+    o.start(); o.stop(audioCtx.currentTime + 0.5);
+    if (navigator.vibrate) navigator.vibrate(500);
   } catch (e) {}
 }
-
 function lancerAlerte() {
   if (enAlerte) return;
   enAlerte = true;
@@ -177,26 +150,19 @@ function lancerAlerte() {
   beep();
   intervalSon = setInterval(beep, 1200);
 }
-
 function stopAlerte() {
   enAlerte = false;
   clearInterval(intervalSon);
   document.getElementById('alertBox').style.display = 'none';
   if (navigator.vibrate) navigator.vibrate(0);
 }
-
-function testSon() {
-  initAudio();
-  beep();
-}
-
+function testSon() { initAudio(); beep(); }
 async function init() {
   if (!('getBattery' in navigator)) {
     document.getElementById('status').innerText = 'Non supporté (ex: iOS/Firefox)';
     document.getElementById('pct').innerText = 'N/A';
     return;
   }
-
   try {
     const battery = await navigator.getBattery();
     function update() {
@@ -206,23 +172,13 @@ async function init() {
       document.getElementById('chargeTxt').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge';
       document.getElementById('status').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge';
       document.getElementById('circle').style.background = `conic-gradient(#00e5ff ${pct}%, #1a2340 ${pct}%)`;
-
-      if (battery.charging && battery.chargingTime !== Infinity) {
-        document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime / 60) + ' min restantes';
-      } else if (!battery.charging && battery.dischargingTime !== Infinity) {
-        document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime / 60) + ' min restantes';
-      } else {
-        document.getElementById('timeTxt').innerText = '--';
-      }
-
-      if (pct >= 100 && battery.charging) {
-        lancerAlerte();
-      }
-      if (!battery.charging && enAlerte) {
-        stopAlerte();
-      }
+      if (battery.charging && battery.chargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime / 60) + ' min restantes';
+      else if (!battery.charging && battery.dischargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime / 60) + ' min restantes';
+      else document.getElementById('timeTxt').innerText = '--';
+      // ✅ CORRIGÉ : ALERTE À 80% AU LIEU DE 100%
+      if (pct >= SEUIL_ALERTE && battery.charging) lancerAlerte();
+      if (!battery.charging && enAlerte) stopAlerte();
     }
-
     update();
     battery.addEventListener('levelchange', update);
     battery.addEventListener('chargingchange', update);
@@ -231,9 +187,7 @@ async function init() {
     document.getElementById('pct').innerText = 'Erreur';
   }
 }
-
 init();
 </script>
 </body>
-   </html>
-   
+</html>
