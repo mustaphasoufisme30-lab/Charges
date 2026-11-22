@@ -1,51 +1,34 @@
 name: Build APK
-
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
-
-env:
-  CI: true
+    branches: [main, master]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
+          node-version: 22
+      - name: Install
+        run: npm install --legacy-peer-deps
+      - name: Build
+        run: npm run build
+      - uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android Licenses
-        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-      - name: Install Bubblewrap
-        run: npm install -g @bubblewrap/cli
-
-      - name: Build APK
+          java-version: '21'
+      - name: Make APK
         run: |
-          yes "y" | bubblewrap build --manifest=https://charges-ige9.vercel.app/manifest.json --directory=./twa-app --skipPwaValidation
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest --legacy-peer-deps
+          echo '{"appId":"com.charges","appName":"ChargeGuard","webDir":"dist"}' > capacitor.config.json
+          npx cap add android
+          npx cap copy android
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
         with:
-          name: ChargeGuard-APK
-          path: |
-            ./twa-app/app/build/outputs/apk/debug/*.apk
-            ./twa-app/app/build/outputs/bundle/release/*.aab
+          name: Alertecharge-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
