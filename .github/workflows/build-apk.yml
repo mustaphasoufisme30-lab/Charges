@@ -28,12 +28,12 @@ jobs:
 
       - name: Init TWA Project
         run: |
-          bubblewrap init --manifest=https://charges-ige9.vercel.app/manifest.json --directory=./twa-app
+          bubblewrap init --manifest=https://charges-ige9.vercel.app/manifest.json --directory=./twa-app --packageId=com.mustapha.charguard --name=ChargeGuard --launcherName=ChargeGuard --display=standalone --themeColor=#22c55e --backgroundColor=#000000 --startUrl=/ --icon=https://charges-ige9.vercel.app/icon-512.png --maskableIcon=https://charges-ige9.vercel.app/icon-512.png --splashScreenFadeOutDuration=300 --enableNotifications=false --skipPwaValidation --skipSdkValidation
 
       - name: Build APK
         run: |
           cd ./twa-app
-          bubblewrap build
+          bubblewrap build --skipPwaValidation --skipSdkValidation
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
