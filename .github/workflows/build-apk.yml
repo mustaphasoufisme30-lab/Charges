@@ -15,17 +15,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Install PWABuilder CLI
-        run: npm install -g @pwabuilder/cli
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Build Android APK
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Init TWA Project
         run: |
-          pwabuilder https://chargeguard.vercel.app -p android -m ./public/manifest.json
+          bubblewrap init --manifest=https://chargeguard.vercel.app/manifest.json --directory=./twa-app
+
+      - name: Build APK
+        run: |
+          cd ./twa-app
+          bubblewrap build
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ChargeGuard-APK
-          path: ./pwabuilder-android/*.apk
+          path: ./twa-app/app/build/outputs/apk/debug/*.apk
