@@ -26,14 +26,21 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android Licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Install Bubblewrap
         run: npm install -g @bubblewrap/cli
 
       - name: Build APK
         run: |
-          yes "" | bubblewrap build --manifest=https://charges-ige9.vercel.app/manifest.json --directory=./twa-app --skipPwaValidation --skipSdkValidation
+          yes "y" | bubblewrap build --manifest=https://charges-ige9.vercel.app/manifest.json --directory=./twa-app --skipPwaValidation
         env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
