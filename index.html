@@ -30,7 +30,7 @@
   .btn{margin-top:12px;background:#00e5ff;color:black;border:none;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%;max-width:320px;font-size:15px;transition:0.3s}
   .btn.active{background:#00c853;color:white}
   #installBtn{display:none;background:#ffab00;color:black}
-  #androidBtn{background:#00c853;color:white;font-size:17px;padding:16px 20px;border:2px solid #00e853}
+  #androidBtn, #androidBtn2{background:#00c853;color:white;font-size:17px;padding:16px 20px;border:2px solid #00e853}
   .small{margin-top:15px;color:#8892a8;font-size:12px}
   body.eco-mode{background:#000000}
   body.eco-mode .inner{background:#000000}
@@ -38,14 +38,14 @@
   body.eco-mode .circle{opacity:0.45}
   body.eco-mode #armBtn{opacity:0.35}
   body.eco-mode #ecoBtn{background:#111111;color:#666666;border:1px solid #222222}
-  #lockScreen{position:fixed;inset:0;background:#050a1a;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px}
+  #lockScreen{position:fixed;inset:0;background:#050a1a;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px;overflow-y:auto}
   #lockScreen h2{font-size:28px;color:#00e5ff;margin-bottom:8px}
   #lockScreen p{color:#8892a8;font-size:14px;margin-bottom:20px;line-height:1.5}
   #codeInput{width:100%;max-width:320px;padding:15px;border-radius:12px;border:2px solid #1a2340;background:#101a35;color:white;font-size:18px;text-align:center;text-transform:uppercase;letter-spacing:2px;outline:none}
   #codeInput:focus{border-color:#00e5ff}
   #errorMsg{display:none;color:#ff5252;background:#3a0a0a;padding:10px 15px;border-radius:10px;margin-top:15px;font-size:14px;font-weight:bold;width:100%;max-width:320px}
   #lockBtn{margin-top:15px;background:#00e5ff;color:black;border:none;padding:15px 20px;border-radius:12px;font-weight:900;cursor:pointer;width:100%;max-width:320px;font-size:16px}
-  #androidInfo{display:none;background:#0a2a12;border:1px solid #00c853;padding:12px;border-radius:10px;margin-top:12px;font-size:13px;line-height:1.5;width:100%;max-width:320px}
+  #androidInfo, #androidInfo2{display:none;background:#0a2a12;border:1px solid #00c853;padding:12px;border-radius:10px;margin-top:12px;font-size:13px;line-height:1.5;width:100%;max-width:320px}
 </style>
 </head>
 <body>
@@ -58,17 +58,17 @@
   <input type="text" id="codeInput" placeholder="TA CLÉ ICI" autocomplete="off">
   <button id="lockBtn" onclick="verifierCode()">🔓 DÉBLOQUER</button>
   <div id="errorMsg">❌ Code invalide ! Essaie encore.</div>
+  <!-- BOUTON ANDROID SUR ECRAN VERROUILLÉ -->
+  <button id="androidBtn" class="btn" onclick="telechargerAndroid()">📲 Télécharger Android</button>
+  <div id="androidInfo">Pour installer :<br>1. Clique sur ⋮ en haut à droite de Chrome<br>2. Clique sur <b>"Ajouter à l'écran d'accueil"</b> ou <b>"Installer l'application"</b><br>3. L'app va s'installer comme une vraie app Android ✅</div>
   <p style="margin-top:20px;font-size:12px;color:#555">Demande ta clé pour débloquer l'app</p>
 </div>
 
 <div id="mainWrap">
   <h1>⚡ ChargeGuard</h1>
   <p class="sub">Hors-ligne - Alerte à 80% - Anti-veille</p>
-
-  <!-- NOUVEAU BOUTON ANDROID -->
-  <button id="androidBtn" class="btn" onclick="telechargerAndroid()">📲 Télécharger Android</button>
-  <div id="androidInfo">Pour installer :<br>1. Clique sur ⋮ en haut à droite de Chrome<br>2. Clique sur <b>"Ajouter à l'écran d'accueil"</b> ou <b>"Installer l'application"</b><br>3. L'app va s'installer comme une vraie app Android ✅</div>
-
+  <button id="androidBtn2" class="btn" onclick="telechargerAndroid()">📲 Télécharger Android</button>
+  <div id="androidInfo2">Pour installer :<br>1. Clique sur ⋮ en haut à droite de Chrome<br>2. Clique sur <b>"Ajouter à l'écran d'accueil"</b> ou <b>"Installer l'application"</b><br>3. L'app va s'installer comme une vraie app Android ✅</div>
   <div class="circle" id="circle" style="margin-top:20px">
     <div class="inner">
       <div id="pct">--%</div>
@@ -99,13 +99,10 @@ let audioCtx, intervalSon, intervalShift, wakeLock = null, enAlerte = false, eco
 let surveillanceActive = false;
 const SEUIL_ALERTE = 80;
 const BON_CODE = String.fromCharCode(72,73,66,65,50,48,50,54);
-
 function verifierCode() {
   const saisie = document.getElementById('codeInput').value.trim().toUpperCase();
   const err = document.getElementById('errorMsg');
-  if (saisie === BON_CODE) {
-    debloquerApp();
-  } else {
+  if (saisie === BON_CODE) { debloquerApp(); } else {
     err.style.display = 'block';
     document.getElementById('codeInput').style.borderColor = '#ff5252';
     document.getElementById('codeInput').value = '';
@@ -119,165 +116,35 @@ function debloquerApp() {
   init();
 }
 document.getElementById('codeInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifierCode(); });
-
-function updateNet(){
-  document.getElementById('netStatus').innerText = navigator.onLine ? '📶 En ligne' : '📴 Hors-ligne - Ça marche !';
-}
-window.addEventListener('online', updateNet);
-window.addEventListener('offline', updateNet);
-updateNet();
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW:', err));
-  });
-}
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  document.getElementById('installBtn').style.display = 'block';
-  document.getElementById('androidBtn').innerText = '📲 Télécharger Android - Installer Maintenant';
-});
-async function installerApp() {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none';
-  deferredPrompt = null;
-}
-// NOUVELLE FONCTION BOUTON ANDROID
+function updateNet(){ document.getElementById('netStatus').innerText = navigator.onLine ? '📶 En ligne' : '📴 Hors-ligne - Ça marche !'; }
+window.addEventListener('online', updateNet); window.addEventListener('offline', updateNet); updateNet();
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW:', err)); }); }
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; document.getElementById('installBtn').style.display = 'block'; document.getElementById('androidBtn').innerText = '📲 Télécharger Android - Installer Maintenant'; document.getElementById('androidBtn2').innerText = '📲 Télécharger Android - Installer Maintenant'; });
+async function installerApp() { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none'; deferredPrompt = null; }
 async function telechargerAndroid() {
   if (deferredPrompt) {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      document.getElementById('androidBtn').innerText = '✅ Application Installée !';
-      document.getElementById('androidInfo').style.display = 'none';
-    }
+    if (outcome === 'accepted') { document.getElementById('androidBtn').innerText = '✅ Application Installée !'; document.getElementById('androidBtn2').innerText = '✅ Application Installée !'; }
     deferredPrompt = null;
   } else {
-    // Si Chrome ne propose pas encore l'installation, on montre les étapes
-    const info = document.getElementById('androidInfo');
-    if (info.style.display === 'block') {
-      info.style.display = 'none';
-    } else {
-      info.style.display = 'block';
-    }
+    const info = document.getElementById('androidInfo'); const info2 = document.getElementById('androidInfo2');
+    const show = info.style.display !== 'block';
+    info.style.display = show ? 'block' : 'none'; info2.style.display = show ? 'block' : 'none';
   }
 }
-function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-}
-async function demanderWakeLock() {
-  try {
-    if ('wakeLock' in navigator) {
-      wakeLock = await navigator.wakeLock.request('screen');
-      document.getElementById('wakeTxt').innerText = 'Maintenu ✅';
-      document.getElementById('wakeTxt').style.color = '#00e5ff';
-      wakeLock.addEventListener('release', () => {
-        document.getElementById('wakeTxt').innerText = 'Coupé, réactivation...';
-        document.getElementById('wakeTxt').style.color = '#ff5252';
-        if (surveillanceActive && document.visibilityState === 'visible') {
-          setTimeout(demanderWakeLock, 1000);
-        }
-      });
-    }
-  } catch (err) {
-    document.getElementById('wakeTxt').innerText = 'Non supporté';
-  }
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && surveillanceActive) demanderWakeLock();
-});
-setInterval(() => {
-  if (surveillanceActive && (!wakeLock || wakeLock.released)) demanderWakeLock();
-}, 10000);
-async function activerSurveillance() {
-  initAudio();
-  surveillanceActive = true;
-  const btn = document.getElementById('armBtn');
-  btn.innerText = "✅ Surveillance active - Ne verrouille pas l'écran";
-  btn.classList.add('active');
-  await demanderWakeLock();
-  beep();
-}
-function deplacerEcran() {
-  const wrap = document.getElementById('mainWrap');
-  const x = Math.floor(Math.random() * 29) - 14;
-  const y = Math.floor(Math.random() * 29) - 14;
-  wrap.style.transform = `translate(${x}px, ${y}px)`;
-}
-function toggleEco() {
-  ecoMode = !ecoMode;
-  document.body.classList.toggle('eco-mode', ecoMode);
-  const btn = document.getElementById('ecoBtn');
-  const wrap = document.getElementById('mainWrap');
-  if (ecoMode) {
-    btn.innerText = "☀️ Quitter le mode économie";
-    deplacerEcran();
-    intervalShift = setInterval(deplacerEcran, 60000);
-  } else {
-    btn.innerText = "🌑 Mode économie d'écran : OFF";
-    clearInterval(intervalShift);
-    wrap.style.transform = 'translate(0px, 0px)';
-  }
-}
-function beep() {
-  try {
-    initAudio();
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.connect(g); g.connect(audioCtx.destination);
-    o.frequency.value = 880; o.type = 'square'; g.gain.value = 0.3;
-    o.start(); o.stop(audioCtx.currentTime + 0.5);
-    if (navigator.vibrate) navigator.vibrate(500);
-  } catch (e) {}
-}
-function lancerAlerte() {
-  if (enAlerte) return;
-  enAlerte = true;
-  if (ecoMode) toggleEco();
-  document.getElementById('alertBox').style.display = 'flex';
-  beep();
-  intervalSon = setInterval(beep, 1200);
-  if (navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
-}
-function stopAlerte() {
-  enAlerte = false;
-  clearInterval(intervalSon);
-  document.getElementById('alertBox').style.display = 'none';
-  if (navigator.vibrate) navigator.vibrate(0);
-}
+function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (audioCtx.state === 'suspended') audioCtx.resume(); }
+async function demanderWakeLock() { try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); document.getElementById('wakeTxt').innerText = 'Maintenu ✅'; document.getElementById('wakeTxt').style.color = '#00e5ff'; wakeLock.addEventListener('release', () => { document.getElementById('wakeTxt').innerText = 'Coupé, réactivation...'; document.getElementById('wakeTxt').style.color = '#ff5252'; if (surveillanceActive && document.visibilityState === 'visible') { setTimeout(demanderWakeLock, 1000); } }); } } catch (err) { document.getElementById('wakeTxt').innerText = 'Non supporté'; } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && surveillanceActive) demanderWakeLock(); });
+setInterval(() => { if (surveillanceActive && (!wakeLock || wakeLock.released)) demanderWakeLock(); }, 10000);
+async function activerSurveillance() { initAudio(); surveillanceActive = true; const btn = document.getElementById('armBtn'); btn.innerText = "✅ Surveillance active - Ne verrouille pas l'écran"; btn.classList.add('active'); await demanderWakeLock(); beep(); }
+function deplacerEcran() { const wrap = document.getElementById('mainWrap'); const x = Math.floor(Math.random() * 29) - 14; const y = Math.floor(Math.random() * 29) - 14; wrap.style.transform = `translate(${x}px, ${y}px)`; }
+function toggleEco() { ecoMode = !ecoMode; document.body.classList.toggle('eco-mode', ecoMode); const btn = document.getElementById('ecoBtn'); const wrap = document.getElementById('mainWrap'); if (ecoMode) { btn.innerText = "☀️ Quitter le mode économie"; deplacerEcran(); intervalShift = setInterval(deplacerEcran, 60000); } else { btn.innerText = "🌑 Mode économie d'écran : OFF"; clearInterval(intervalShift); wrap.style.transform = 'translate(0px, 0px)'; } }
+function beep() { try { initAudio(); const o = audioCtx.createOscillator(); const g = audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.value = 880; o.type = 'square'; g.gain.value = 0.3; o.start(); o.stop(audioCtx.currentTime + 0.5); if (navigator.vibrate) navigator.vibrate(500); } catch (e) {} }
+function lancerAlerte() { if (enAlerte) return; enAlerte = true; if (ecoMode) toggleEco(); document.getElementById('alertBox').style.display = 'flex'; beep(); intervalSon = setInterval(beep, 1200); if (navigator.vibrate) navigator.vibrate([500,200,500,200,500]); }
+function stopAlerte() { enAlerte = false; clearInterval(intervalSon); document.getElementById('alertBox').style.display = 'none'; if (navigator.vibrate) navigator.vibrate(0); }
 function testSon() { initAudio(); beep(); }
-async function init() {
-  if (!('getBattery' in navigator)) {
-    document.getElementById('status').innerText = 'Non supporté (ex: iOS/Firefox)';
-    document.getElementById('pct').innerText = 'N/A';
-    return;
-  }
-  try {
-    const battery = await navigator.getBattery();
-    function update() {
-      const pct = Math.round(battery.level * 100);
-      document.getElementById('pct').innerText = pct + '%';
-      document.getElementById('levelTxt').innerText = pct + '%';
-      document.getElementById('chargeTxt').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge';
-      document.getElementById('status').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge';
-      document.getElementById('circle').style.background = `conic-gradient(#00e5ff ${pct}%, #1a2340 ${pct}%)`;
-      if (battery.charging && battery.chargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime / 60) + ' min restantes';
-      else if (!battery.charging && battery.dischargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime / 60) + ' min restantes';
-      else document.getElementById('timeTxt').innerText = '--';
-      if (pct >= SEUIL_ALERTE && battery.charging) lancerAlerte();
-      if (!battery.charging && enAlerte) stopAlerte();
-    }
-    update();
-    battery.addEventListener('levelchange', update);
-    battery.addEventListener('chargingchange', update);
-  } catch (e) {
-    document.getElementById('status').innerText = 'Erreur d’accès batterie';
-    document.getElementById('pct').innerText = 'Erreur';
-  }
-}
+async function init() { if (!('getBattery' in navigator)) { document.getElementById('status').innerText = 'Non supporté (ex: iOS/Firefox)'; document.getElementById('pct').innerText = 'N/A'; return; } try { const battery = await navigator.getBattery(); function update() { const pct = Math.round(battery.level * 100); document.getElementById('pct').innerText = pct + '%'; document.getElementById('levelTxt').innerText = pct + '%'; document.getElementById('chargeTxt').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge'; document.getElementById('status').innerText = battery.charging ? 'En charge ⚡' : 'Pas en charge'; document.getElementById('circle').style.background = `conic-gradient(#00e5ff ${pct}%, #1a2340 ${pct}%)`; if (battery.charging && battery.chargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.chargingTime / 60) + ' min restantes'; else if (!battery.charging && battery.dischargingTime !== Infinity) document.getElementById('timeTxt').innerText = Math.round(battery.dischargingTime / 60) + ' min restantes'; else document.getElementById('timeTxt').innerText = '--'; if (pct >= SEUIL_ALERTE && battery.charging) lancerAlerte(); if (!battery.charging && enAlerte) stopAlerte(); } update(); battery.addEventListener('levelchange', update); battery.addEventListener('chargingchange', update); } catch (e) { document.getElementById('status').innerText = 'Erreur d’accès batterie'; document.getElementById('pct').innerText = 'Erreur'; } }
 </script>
 </body>
-   </html>
+ </html>
