@@ -17,7 +17,7 @@
   #mainWrap{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;transition:transform 1.5s ease-in-out}
   .netStatus{position:fixed;top:10px;right:10px;background:#222;padding:6px 12px;border-radius:20px;font-size:12px;z-index:10}
   h1{font-size:22px;color:#00e5ff;margin-bottom:5px}
-  p.sub{color:#8892a8;font-size:13px;margin-bottom:25px}
+  p.sub{color:#8892a8;font-size:13px;margin-bottom:15px}
   .circle{width:260px;height:260px;border-radius:50%;background:conic-gradient(#00e5ff 0%, #1a2340 0%);display:flex;align-items:center;justify-content:center;position:relative;transition:0.5s}
   .inner{width:215px;height:215px;background:#050a1a;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:background 0.4s}
   #pct{font-size:64px;font-weight:900}
@@ -30,6 +30,7 @@
   .btn{margin-top:12px;background:#00e5ff;color:black;border:none;padding:12px 20px;border-radius:10px;font-weight:bold;cursor:pointer;width:100%;max-width:320px;font-size:15px;transition:0.3s}
   .btn.active{background:#00c853;color:white}
   #installBtn{display:none;background:#ffab00;color:black}
+  #androidBtn{background:#00c853;color:white;font-size:17px;padding:16px 20px;border:2px solid #00e853}
   .small{margin-top:15px;color:#8892a8;font-size:12px}
   body.eco-mode{background:#000000}
   body.eco-mode .inner{background:#000000}
@@ -44,6 +45,7 @@
   #codeInput:focus{border-color:#00e5ff}
   #errorMsg{display:none;color:#ff5252;background:#3a0a0a;padding:10px 15px;border-radius:10px;margin-top:15px;font-size:14px;font-weight:bold;width:100%;max-width:320px}
   #lockBtn{margin-top:15px;background:#00e5ff;color:black;border:none;padding:15px 20px;border-radius:12px;font-weight:900;cursor:pointer;width:100%;max-width:320px;font-size:16px}
+  #androidInfo{display:none;background:#0a2a12;border:1px solid #00c853;padding:12px;border-radius:10px;margin-top:12px;font-size:13px;line-height:1.5;width:100%;max-width:320px}
 </style>
 </head>
 <body>
@@ -62,7 +64,12 @@
 <div id="mainWrap">
   <h1>⚡ ChargeGuard</h1>
   <p class="sub">Hors-ligne - Alerte à 80% - Anti-veille</p>
-  <div class="circle" id="circle">
+
+  <!-- NOUVEAU BOUTON ANDROID -->
+  <button id="androidBtn" class="btn" onclick="telechargerAndroid()">📲 Télécharger Android</button>
+  <div id="androidInfo">Pour installer :<br>1. Clique sur ⋮ en haut à droite de Chrome<br>2. Clique sur <b>"Ajouter à l'écran d'accueil"</b> ou <b>"Installer l'application"</b><br>3. L'app va s'installer comme une vraie app Android ✅</div>
+
+  <div class="circle" id="circle" style="margin-top:20px">
     <div class="inner">
       <div id="pct">--%</div>
       <div id="status">Connexion...</div>
@@ -91,7 +98,6 @@
 let audioCtx, intervalSon, intervalShift, wakeLock = null, enAlerte = false, ecoMode = false, deferredPrompt;
 let surveillanceActive = false;
 const SEUIL_ALERTE = 80;
-// Code caché en chiffres, pas en texte lisible
 const BON_CODE = String.fromCharCode(72,73,66,65,50,48,50,54);
 
 function verifierCode() {
@@ -113,7 +119,6 @@ function debloquerApp() {
   init();
 }
 document.getElementById('codeInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifierCode(); });
-// PLUS DE MÉMORISATION - On redemande la clé à chaque ouverture
 
 function updateNet(){
   document.getElementById('netStatus').innerText = navigator.onLine ? '📶 En ligne' : '📴 Hors-ligne - Ça marche !';
@@ -130,6 +135,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
   document.getElementById('installBtn').style.display = 'block';
+  document.getElementById('androidBtn').innerText = '📲 Télécharger Android - Installer Maintenant';
 });
 async function installerApp() {
   if (!deferredPrompt) return;
@@ -137,6 +143,26 @@ async function installerApp() {
   const { outcome } = await deferredPrompt.userChoice;
   if (outcome === 'accepted') document.getElementById('installBtn').style.display = 'none';
   deferredPrompt = null;
+}
+// NOUVELLE FONCTION BOUTON ANDROID
+async function telechargerAndroid() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      document.getElementById('androidBtn').innerText = '✅ Application Installée !';
+      document.getElementById('androidInfo').style.display = 'none';
+    }
+    deferredPrompt = null;
+  } else {
+    // Si Chrome ne propose pas encore l'installation, on montre les étapes
+    const info = document.getElementById('androidInfo');
+    if (info.style.display === 'block') {
+      info.style.display = 'none';
+    } else {
+      info.style.display = 'block';
+    }
+  }
 }
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -254,4 +280,4 @@ async function init() {
 }
 </script>
 </body>
- </html>
+   </html>
