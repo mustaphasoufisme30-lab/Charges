@@ -1,11 +1,11 @@
 {
-  "name": "ChargeGuard - Alerte charge",
+  "name": "ChargeGuard",
   "short_name": "ChargeGuard",
-  "description": "Protège ta batterie : alerte à 80%, anti-veille, mode économie d'écran.",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#050a1a",
   "theme_color": "#050a1a",
+  "description": "Alerte batterie 80%",
   "icons": [
     {
       "src": "icon.svg",
