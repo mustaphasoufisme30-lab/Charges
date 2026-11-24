@@ -1,5 +1,6 @@
 import {
   FastForward,
+  KeyRound,
   Moon,
   Plug,
   ShieldCheck,
@@ -19,6 +20,7 @@ interface HardwareBenchControlsProps {
   state: BatterySimState;
   isAutoCharging: boolean;
   audioEnabled: boolean;
+  isPhoneActivated: boolean;
   events: BatteryEventEntry[];
   onTogglePlugged: () => void;
   onLevelChange: (level: number) => void;
@@ -27,12 +29,15 @@ interface HardwareBenchControlsProps {
   onToggleScreenOff: () => void;
   onToggleAudio: () => void;
   onTogglePermission: () => void;
+  onTogglePhoneActivation: () => void;
+  onLockApp: () => void;
 }
 
 export function HardwareBenchControls({
   state,
   isAutoCharging,
   audioEnabled,
+  isPhoneActivated,
   events,
   onTogglePlugged,
   onLevelChange,
@@ -41,6 +46,8 @@ export function HardwareBenchControls({
   onToggleScreenOff,
   onToggleAudio,
   onTogglePermission,
+  onTogglePhoneActivation,
+  onLockApp,
 }: HardwareBenchControlsProps) {
   const tempSeverity = getTemperatureSeverity(state.temperatureC);
   const tempLabel = getTemperatureLabel(tempSeverity);
@@ -200,19 +207,44 @@ export function HardwareBenchControls({
           </div>
         </div>
 
-        {/* Permission toggle row */}
-        <div className="mt-5 flex items-center justify-between gap-4 border-t border-slate-100 pt-4">
-          <div className="flex items-center gap-2.5 text-sm text-slate-700">
-            <ShieldCheck className="h-4 w-4 text-slate-500 shrink-0" aria-hidden="true" />
-            <span>Permission Android 13+ (POST_NOTIFICATIONS)</span>
+        {/* Permission & Activation rows */}
+        <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-sm text-slate-700">
+              <ShieldCheck className="h-4 w-4 text-slate-500 shrink-0" aria-hidden="true" />
+              <span>Permission Android 13+ (POST_NOTIFICATIONS)</span>
+            </div>
+            <button
+              type="button"
+              onClick={onTogglePermission}
+              className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap cursor-pointer"
+            >
+              {state.hasNotificationPermission ? 'Révoquer pour tester' : 'Accorder'}
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onTogglePermission}
-            className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap cursor-pointer"
-          >
-            {state.hasNotificationPermission ? 'Révoquer pour tester' : 'Accorder'}
-          </button>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+            <div className="flex items-center gap-2.5 text-sm text-slate-700">
+              <KeyRound className="h-4 w-4 text-slate-500 shrink-0" aria-hidden="true" />
+              <span>Écran d&apos;activation Android (ActivationScreen.kt)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onTogglePhoneActivation}
+                className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap cursor-pointer"
+              >
+                {isPhoneActivated ? 'Tester sur le téléphone' : 'Déverrouiller le téléphone'}
+              </button>
+              <button
+                type="button"
+                onClick={onLockApp}
+                className="min-h-[36px] rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 whitespace-nowrap cursor-pointer"
+              >
+                Verrouiller l&apos;accès
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 

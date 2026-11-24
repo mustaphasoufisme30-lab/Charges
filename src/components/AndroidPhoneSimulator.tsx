@@ -2,11 +2,15 @@ import {
   BatteryCharging,
   BellOff,
   BellRing,
+  KeyRound,
   Lock,
   ShieldAlert,
+  ShieldCheck,
   Thermometer,
   Wifi,
 } from 'lucide-react';
+import { FormEvent, useState } from 'react';
+import { validateActivationKey } from '../utils/activation';
 import {
   BatterySimState,
   getChargeStatus,
@@ -16,6 +20,8 @@ import { BatteryGaugeSvg } from './BatteryGaugeSvg';
 
 interface AndroidPhoneSimulatorProps {
   state: BatterySimState;
+  isPhoneActivated: boolean;
+  onUnlockPhone: () => void;
   onToggleMonitoring: (enabled: boolean) => void;
   onThresholdChange: (value: number) => void;
   onStopAlarmApp: () => void;
@@ -26,6 +32,8 @@ interface AndroidPhoneSimulatorProps {
 
 export function AndroidPhoneSimulator({
   state,
+  isPhoneActivated,
+  onUnlockPhone,
   onToggleMonitoring,
   onThresholdChange,
   onStopAlarmApp,
@@ -33,9 +41,23 @@ export function AndroidPhoneSimulator({
   onGrantNotificationPermission,
   onWakeScreen,
 }: AndroidPhoneSimulatorProps) {
+  const [phoneKeyInput, setPhoneKeyInput] = useState('');
+  const [phoneKeyError, setPhoneKeyError] = useState<string | null>(null);
   const chargeStatus = getChargeStatus(state.level, state.isPluggedIn);
   const chargeLabel = getChargeStatusLabel(chargeStatus);
   const formattedTemp = state.temperatureC.toFixed(1).replace('.', ',');
+
+  function handlePhoneActivationSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const res = validateActivationKey(phoneKeyInput);
+    if (!res.valid) {
+      setPhoneKeyError(res.error);
+      return;
+    }
+    setPhoneKeyError(null);
+    setPhoneKeyInput('');
+    onUnlockPhone();
+  }
 
   return (
     <div className="flex flex-col items-center">
@@ -137,6 +159,72 @@ export function AndroidPhoneSimulator({
               >
                 Rallumer l&apos;écran
               </button>
+            </div>
+          ) : !isPhoneActivated ? (
+            /* Jetpack Compose ActivationScreen.kt Preview inside Phone */
+            <div
+              data-testid="phone-activation-view"
+              className="flex flex-1 flex-col items-center justify-center px-6 py-8 text-center"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-400">
+                <ShieldCheck className="h-7 w-7" aria-hidden="true" />
+              </div>
+
+              <h2 className="mt-4 font-display text-lg font-bold text-white">
+                ChargeGuard 100%
+              </h2>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
+                Entrez votre clé d&apos;activation avant de lancer la surveillance de charge.
+              </p>
+
+              <form
+                onSubmit={handlePhoneActivationSubmit}
+                noValidate
+                className="mt-6 w-full space-y-3 text-left"
+              >
+                <div>
+                  <label
+                    htmlFor="phone-activation-input"
+                    className="block text-[11px] font-medium text-slate-300"
+                  >
+                    Clé d&apos;activation Android
+                  </label>
+                  <div className="relative mt-1.5">
+                    <KeyRound
+                      className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                      aria-hidden="true"
+                    />
+                    <input
+                      id="phone-activation-input"
+                      type="text"
+                      autoComplete="off"
+                      value={phoneKeyInput}
+                      onChange={(e) => {
+                        setPhoneKeyInput(e.target.value);
+                        if (phoneKeyError) setPhoneKeyError(null);
+                      }}
+                      placeholder="Saisir la clé"
+                      className={`w-full min-h-[44px] rounded-xl border bg-[#131C27] pl-9 pr-3 py-2 font-mono text-xs font-semibold tracking-wider text-white uppercase placeholder:normal-case placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-500 focus:outline-none ${
+                        phoneKeyError
+                          ? 'border-red-500'
+                          : 'border-slate-700 focus:border-emerald-500'
+                      }`}
+                    />
+                  </div>
+                  {phoneKeyError && (
+                    <p role="alert" className="mt-1.5 text-[11px] text-red-400">
+                      {phoneKeyError}
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-slate-950 transition-colors hover:bg-emerald-400 cursor-pointer"
+                >
+                  Activer l&apos;application
+                </button>
+              </form>
             </div>
           ) : (
             /* Active Jetpack Compose App Screen */

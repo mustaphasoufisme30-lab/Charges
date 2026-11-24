@@ -666,8 +666,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.chargeguard.app.model.BatteryMonitorRepository
 import com.chargeguard.app.model.BatteryUiState
 import com.chargeguard.app.model.ChargeStatus
+import com.chargeguard.app.security.ActivationManager
 import com.chargeguard.app.service.BatteryMonitorService
 import com.chargeguard.app.ui.components.BatteryCircularGauge
+import com.chargeguard.app.ui.screens.ActivationScreen
 import com.chargeguard.app.ui.theme.AlarmCrimson
 import com.chargeguard.app.ui.theme.ChargeEmerald
 import com.chargeguard.app.ui.theme.ChargeGuardTheme
@@ -683,26 +685,42 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ChargeGuardTheme {
-                val uiState by BatteryMonitorRepository.state.collectAsStateWithLifecycle()
-                ChargeGuardScreen(
-                    state = uiState,
-                    onToggleMonitoring = { enabled ->
-                        if (enabled) {
-                            BatteryMonitorService.start(this, uiState.alertThreshold)
-                        } else {
-                            BatteryMonitorService.stopService(this)
+                var isActivated by remember {
+                    mutableStateOf(ActivationManager.isActivated(applicationContext))
+                }
+
+                if (!isActivated) {
+                    ActivationScreen(
+                        onValidateKey = { rawKey ->
+                            val success = ActivationManager.activateWithKey(applicationContext, rawKey)
+                            if (success) {
+                                isActivated = true
+                            }
+                            success
                         }
-                    },
-                    onThresholdChange = { newThreshold ->
-                        BatteryMonitorRepository.updateThreshold(newThreshold)
-                        if (uiState.isMonitoring) {
-                            BatteryMonitorService.updateThreshold(this, newThreshold)
+                    )
+                } else {
+                    val uiState by BatteryMonitorRepository.state.collectAsStateWithLifecycle()
+                    ChargeGuardScreen(
+                        state = uiState,
+                        onToggleMonitoring = { enabled ->
+                            if (enabled) {
+                                BatteryMonitorService.start(this, uiState.alertThreshold)
+                            } else {
+                                BatteryMonitorService.stopService(this)
+                            }
+                        },
+                        onThresholdChange = { newThreshold ->
+                            BatteryMonitorRepository.updateThreshold(newThreshold)
+                            if (uiState.isMonitoring) {
+                                BatteryMonitorService.updateThreshold(this, newThreshold)
+                            }
+                        },
+                        onStopAlarm = {
+                            BatteryMonitorService.stopAlarm(this)
                         }
-                    },
-                    onStopAlarm = {
-                        BatteryMonitorService.stopAlarm(this)
-                    }
-                )
+                    )
+                }
             }
         }
     }
@@ -1216,6 +1234,218 @@ object BatteryMonitorRepository {
 `,
   },
   {
+    id: 'activation-manager',
+    name: 'ActivationManager.kt',
+    path: 'app/src/main/java/com/chargeguard/app/security/ActivationManager.kt',
+    language: 'kotlin',
+    category: 'Service & Modèle',
+    summary:
+      'Vérifie la clé d’activation "HIBA2026" avant l’ouverture de l’application et enregistre l’état déverrouillé dans SharedPreferences.',
+    content: `package com.chargeguard.app.security
+
+import android.content.Context
+import java.util.Locale
+
+object ActivationManager {
+    private const val PREFS_NAME = "chargeguard_activation_prefs"
+    private const val KEY_IS_ACTIVATED = "is_app_activated"
+    private const val EXPECTED_ACTIVATION_KEY = "HIBA2026"
+
+    fun isActivated(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_IS_ACTIVATED, false)
+    }
+
+    fun activateWithKey(context: Context, inputKey: String): Boolean {
+        val normalized = inputKey.trim().uppercase(Locale.ROOT)
+        if (normalized != EXPECTED_ACTIVATION_KEY) {
+            return false
+        }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_IS_ACTIVATED, true)
+            .apply()
+        return true
+    }
+
+    fun resetActivation(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_IS_ACTIVATED, false)
+            .apply()
+    }
+}
+`,
+  },
+  {
+    id: 'activation-screen',
+    name: 'ActivationScreen.kt',
+    path: 'app/src/main/java/com/chargeguard/app/ui/screens/ActivationScreen.kt',
+    language: 'kotlin',
+    category: 'UI Jetpack Compose',
+    summary:
+      'Écran Jetpack Compose affiché avant le lancement de ChargeGuard 100% pour saisir et valider la clé d’activation "HIBA2026".',
+    content: `package com.chargeguard.app.ui.screens
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.chargeguard.app.ui.theme.AlarmCrimson
+import com.chargeguard.app.ui.theme.ChargeEmerald
+
+@Composable
+fun ActivationScreen(
+    onValidateKey: (String) -> Boolean
+) {
+    var keyInput by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun submit() {
+        val trimmed = keyInput.trim()
+        if (trimmed.isEmpty()) {
+            errorMessage = "Veuillez saisir votre clé d'activation."
+            return
+        }
+        val accepted = onValidateKey(trimmed)
+        if (!accepted) {
+            errorMessage = "Clé d'activation invalide. Réessayez."
+        }
+    }
+
+    Scaffold { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = ChargeEmerald.copy(alpha = 0.14f),
+                modifier = Modifier.size(64.dp)
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Shield,
+                        contentDescription = null,
+                        tint = ChargeEmerald,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "ChargeGuard 100%",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Entrez votre clé d'activation avant de lancer la surveillance de charge.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = keyInput,
+                onValueChange = {
+                    keyInput = it
+                    if (errorMessage != null) errorMessage = null
+                },
+                label = { Text("Clé d'activation") },
+                placeholder = { Text("Ex. HIBA2026") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Rounded.Key,
+                        contentDescription = null
+                    )
+                },
+                singleLine = true,
+                isError = errorMessage != null,
+                supportingText = {
+                    errorMessage?.let { msg ->
+                        Text(text = msg, color = AlarmCrimson)
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Characters,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = { submit() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ChargeEmerald,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "Activer l'application",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+`,
+  },
+  {
     id: 'theme-kt',
     name: 'Theme.kt',
     path: 'app/src/main/java/com/chargeguard/app/ui/theme/Theme.kt',
@@ -1502,6 +1732,9 @@ gradle assembleRelease
 
 ## Installation sur téléphone Android
 Transférez \`app-debug.apk\` sur votre smartphone, appuyez dessus, puis autorisez **Installer des applications inconnues** si Android vous le demande.
+
+## Activation au premier lancement
+Lors de la première ouverture de **ChargeGuard 100%**, saisissez la clé d'activation \`HIBA2026\` sur l'écran d'activation. L'état déverrouillé est ensuite conservé dans les préférences locales (\`SharedPreferences\`).
 `,
   },
 ];
